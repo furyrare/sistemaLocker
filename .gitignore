@@ -47,6 +47,16 @@ coverage/
 *.swp
 *.swo
 
+# Prisma backup files
+*_backup.prisma
+*_com_erro.prisma
+*_old.prisma
+*_en.prisma
+
+# Keep example files but exclude actual env files
+.env.example
+!.env.example
+
 # OS generated files
 .DS_Store
 .DS_Store?
