@@ -1,0 +1,112 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlserver"
+  url      = env("DATABASE_URL")
+}
+
+model Compartment {
+  id          String       @id @default(cuid())
+  lockerId    String
+  number      Int
+  size        String       @default("UNICO") @db.NVarChar(16)
+  status      String       @default("AVAILABLE") @db.NVarChar(24)
+  createdAt   DateTime     @default(now())
+  updatedAt   DateTime
+  Locker      Locker       @relation(fields: [lockerId], references: [id])
+  Delivery    Delivery[]
+  DoorControl DoorControl?
+
+  @@unique([lockerId, number])
+  @@index([lockerId, status])
+}
+
+model Delivery {
+  id             String      @id @default(cuid())
+  lockerId       String
+  compartmentId  String
+  recipientEmail String
+  recipientName  String
+  recipientPhone String      @db.VarChar(20)
+  pickupCode     String
+  description    String
+  orderNumber    String      @db.VarChar(50)
+  status         String      @default("PENDING_DEPOSIT") @db.NVarChar(32)
+  createdAt      DateTime    @default(now())
+  placedAt       DateTime?
+  notifiedAt     DateTime?
+  pickedUpAt     DateTime?
+  depositCode    String?
+  senderEmail    String?     @db.VarChar(255)
+  Compartment    Compartment @relation(fields: [compartmentId], references: [id], onUpdate: NoAction)
+  Locker         Locker      @relation(fields: [lockerId], references: [id], onUpdate: NoAction)
+  PickupLog      PickupLog[]
+
+  @@index([depositCode])
+  @@index([pickupCode])
+  @@index([status])
+}
+
+model DoorControl {
+  id            String       @id @default(cuid())
+  compartmentId String       @unique
+  status        String       @default("CLOSED") @db.NVarChar(16)
+  lastCommand   String?      @db.NVarChar(32)
+  lastResponse  String?      @db.VarChar(255)
+  createdAt     DateTime     @default(now())
+  updatedAt     DateTime
+  esp32DeviceId String?
+  Compartment   Compartment  @relation(fields: [compartmentId], references: [id], onUpdate: NoAction)
+  ESP32Device   ESP32Device? @relation(fields: [esp32DeviceId], references: [id], onUpdate: NoAction)
+
+  @@index([status])
+}
+
+model ESP32Device {
+  id          String        @id @default(cuid())
+  deviceId    String        @unique @db.VarChar(32)
+  lockerId    String
+  ipAddress   String        @db.VarChar(15)
+  status      String        @default("ONLINE") @db.NVarChar(16)
+  lastSeen    DateTime      @default(now())
+  createdAt   DateTime      @default(now())
+  updatedAt   DateTime
+  DoorControl DoorControl[]
+  Locker      Locker        @relation(fields: [lockerId], references: [id])
+
+  @@index([deviceId])
+  @@index([status])
+}
+
+model Locker {
+  id          String        @id @default(cuid())
+  name        String
+  location    String
+  address     String?       @db.NVarChar(255)
+  createdAt   DateTime      @default(now())
+  updatedAt   DateTime
+  Compartment Compartment[]
+  Delivery    Delivery[]
+  ESP32Device ESP32Device[]
+}
+
+model PickupLog {
+  id         String   @id @default(cuid())
+  deliveryId String
+  ipAddress  String?
+  createdAt  DateTime @default(now())
+  Delivery   Delivery @relation(fields: [deliveryId], references: [id])
+
+  @@index([deliveryId])
+}
+
+model User {
+  id        String   @id @default(cuid())
+  name      String
+  email     String   @unique
+  password  String
+  createdAt DateTime @default(now())
+  updatedAt DateTime
+}
