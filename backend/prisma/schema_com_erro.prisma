@@ -1,0 +1,120 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlserver"
+  url      = env("DATABASE_URL")
+}
+
+model Compartimento {
+  id            String          @id @default(cuid())
+  armarioId     String
+  numero        Int
+  tamanho       String          @default("UNICO") @db.NVarChar(16)
+  status        String          @default("DISPONIVEL") @db.NVarChar(24)
+  criadoEm      DateTime        @default(now())
+  atualizadoEm  DateTime
+  Armario       Armario         @relation(fields: [armarioId], references: [id])
+  Entrega       Entrega[]
+  ControlePorta ControlePorta[]
+
+  @@unique([armarioId, numero])
+  @@index([armarioId, status])
+}
+
+model Entrega {
+  id                   String        @id @default(cuid())
+  armarioId            String
+  compartimentoId      String
+  emailDestinatario    String
+  nomeDestinatario     String
+  telefoneDestinatario String        @db.VarChar(20)
+  codigoRetirada       String
+  descricao            String
+  numeroPedido         String        @db.VarChar(50)
+  status               String        @default("AGUARDANDO_DEPOSITO") @db.NVarChar(32)
+  criadoEm             DateTime      @default(now())
+  depositadoEm         DateTime?
+  notificadoEm         DateTime?
+  retiradoEm           DateTime?
+  codigoDeposito       String?
+  emailRemetente       String?       @db.VarChar(255)
+  Compartimento        Compartimento @relation(fields: [compartimentoId], references: [id], onUpdate: NoAction)
+  Armario              Armario       @relation(fields: [armarioId], references: [id], onUpdate: NoAction)
+  LogRetirada          LogRetirada[]
+
+  @@index([codigoDeposito])
+  @@index([codigoRetirada])
+  @@index([status])
+}
+
+model Armario {
+  id               String             @id @default(cuid())
+  nome             String
+  localizacao      String
+  endereco         String?            @db.NVarChar(255)
+  criadoEm         DateTime           @default(now())
+  atualizadoEm     DateTime
+  Compartimento    Compartimento[]
+  Entrega          Entrega[]
+  DispositivoESP32 DispositivoESP32[]
+
+  @@index([nome])
+}
+
+model ControlePorta {
+  id                 String            @id @default(cuid())
+  compartimentoId    String            @unique
+  status             String            @default("FECHADO") @db.NVarChar(16)
+  ultimoComando      String?           @db.NVarChar(32)
+  ultimaResposta     String?           @db.VarChar(255)
+  criadoEm           DateTime          @default(now())
+  atualizadoEm       DateTime
+  dispositivoEsp32Id String?
+  Compartimento      Compartimento     @relation(fields: [compartimentoId], references: [id], onUpdate: NoAction)
+  DispositivoESP32   DispositivoESP32? @relation(fields: [dispositivoEsp32Id], references: [id])
+
+  @@index([compartimentoId])
+  @@index([status])
+  @@index([dispositivoEsp32Id])
+}
+
+model DispositivoESP32 {
+  id            String          @id @default(cuid())
+  deviceId      String          @unique @db.VarChar(32)
+  armarioId     String
+  enderecoIp    String          @db.VarChar(15)
+  status        String          @default("ONLINE") @db.NVarChar(16)
+  ultimoVistoEm DateTime        @default(now())
+  criadoEm      DateTime        @default(now())
+  atualizadoEm  DateTime
+  Armario       Armario         @relation(fields: [armarioId], references: [id])
+  ControlePorta ControlePorta[]
+
+  @@index([deviceId])
+  @@index([status])
+  @@index([armarioId])
+}
+
+model LogRetirada {
+  id         String   @id @default(cuid())
+  entregaId  String
+  enderecoIp String?
+  criadoEm   DateTime @default(now())
+  Entrega    Entrega  @relation(fields: [entregaId], references: [id])
+
+  @@index([entregaId])
+  @@index([criadoEm])
+}
+
+model Usuario {
+  id           String   @id @default(cuid())
+  nome         String
+  email        String   @unique
+  senha        String
+  criadoEm     DateTime @default(now())
+  atualizadoEm DateTime
+
+  @@index([email])
+}
