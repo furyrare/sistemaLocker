@@ -66,6 +66,13 @@ coverage/
 ehthumbs.db
 Thumbs.db
 
+# Documentation (keep only README.md)
+docs/
+
+# Package lock files (generated automatically)
+package-lock.json
+*/package-lock.json
+
 # Temporary folders
 tmp/
 temp/
