@@ -219,19 +219,34 @@ async function pickupByCode({ code, ipAddress }) {
     return updatedDelivery;
   });
 
-  // Enviar e-mail de confirmação de retirada
+  // Enviar e-mails de confirmação de retirada para ambos destinatário e remetente
   try {
     const { sendPickupConfirmationEmail } = require('./emailService');
+    
+    // Enviar para o destinatário (quem retirou)
     await sendPickupConfirmationEmail({
       to: delivery.emailDestinatario,
       recipientName: delivery.nomeDestinatario,
-      lockerLocation: delivery.Armario.localizacao, // Removido lockerName, mantido apenas lockerLocation
+      lockerLocation: delivery.Armario.localizacao,
       compartmentNumber: delivery.Compartimento.numero,
       description: delivery.descricao,
       pickupTime: new Date().toLocaleString('pt-BR'),
       senderEmail: delivery.emailRemetente
     });
-    console.log('📧 E-mail de confirmação de retirada enviado para:', delivery.emailDestinatario);
+    console.log('📧 E-mail de confirmação enviado para o destinatário:', delivery.emailDestinatario);
+    
+    // Enviar para o remetente (quem enviou o pacote)
+    await sendPickupConfirmationEmail({
+      to: delivery.emailRemetente,
+      recipientName: delivery.nomeDestinatario, // Nome de quem retirou
+      lockerLocation: delivery.Armario.localizacao,
+      compartmentNumber: delivery.Compartimento.numero,
+      description: delivery.descricao,
+      pickupTime: new Date().toLocaleString('pt-BR'),
+      senderEmail: delivery.emailRemetente
+    });
+    console.log('📧 E-mail de confirmação enviado para o remetente:', delivery.emailRemetente);
+    
   } catch (emailError) {
     console.error('❌ Erro ao enviar e-mail de confirmação de retirada:', emailError);
     // Não interromper o processo se o e-mail falhar

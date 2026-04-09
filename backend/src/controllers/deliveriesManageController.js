@@ -9,7 +9,12 @@ const { prisma } = require('../db/prisma');
 
 async function list(req, res, next) {
   try {
+    const { lockerId } = req.query;
+    
+    const whereClause = lockerId ? { armarioId: lockerId } : {};
+    
     const deliveries = await prisma.entrega.findMany({
+      where: whereClause,
       include: {
         Armario: {
           select: { nome: true, localizacao: true }

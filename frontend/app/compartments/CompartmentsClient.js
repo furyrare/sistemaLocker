@@ -44,31 +44,8 @@ export default function CompartmentsClient() {
     }
   }
 
-  async function loadDeliveryDetails(compartment) {
-    if (!compartment.deliveryId) return;
-    
-    try {
-      // Buscar detalhes da entrega para este compartimento
-      const deliveries = await apiGet('/api/deliveries-list');
-      const delivery = deliveries.find(d => d.compartmentId === compartment.id);
-      
-      if (delivery) {
-        compartment.deliveryDetails = delivery;
-        setCompartments([...compartments]);
-      }
-    } catch (e) {
-      console.error('Erro ao carregar detalhes da entrega:', e);
-    }
-  }
-
-  useEffect(() => {
-    // Carregar detalhes das entregas para compartimentos reservados/ocupados
-    compartments.forEach(compartment => {
-      if (compartment.status === 'RESERVED' || compartment.status === 'OCCUPIED') {
-        loadDeliveryDetails(compartment);
-      }
-    });
-  }, [compartments.length]);
+  // Removido - dados de entregas já vêm da API /api/dashboard/grid
+  // Não há necessidade de requisição adicional
 
   function getStatusColor(status) {
     switch (status) {

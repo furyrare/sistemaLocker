@@ -74,31 +74,8 @@ export default function DashboardClient() {
     }
   }
 
-  useEffect(() => {
-    // Carregar detalhes das entregas para compartimentos reservados/ocupados
-    const loadDetails = async () => {
-      const deliveries = await apiGet('/api/deliveries-list');
-      
-      const updatedCompartments = compartments.map(compartment => {
-        if (compartment.status === 'RESERVED' || compartment.status === 'OCCUPIED') {
-          const delivery = deliveries.find(d => d.compartimentoId === compartment.id);
-          if (delivery) {
-            return {
-              ...compartment,
-              deliveryDetails: delivery
-            };
-          }
-        }
-        return compartment;
-      });
-      
-      setCompartments(updatedCompartments);
-    };
-    
-    if (compartments.length > 0) {
-      loadDetails();
-    }
-  }, [selectedLocker]); // Apenas selectedLocker como dependência
+  // Removido - dados de entregas já vêm da API /api/dashboard/grid
+  // Não há necessidade de requisição adicional
 
   function getStatusColor(status) {
     switch (status) {
