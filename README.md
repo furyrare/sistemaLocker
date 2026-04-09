@@ -99,10 +99,10 @@ SistemaLocker/
 - `DELETE /api/deliveries/:id` - Deletar entrega
 
 ### Lista de Entregas
-- `GET /api/deliveries-list` - Listar todas as entregas com detalhes
+- `GET /api/deliveries-list` - **DEPRECATED** - Use `/api/deliveries-manage`
 
 ### Gestão de Entregas
-- `GET /api/deliveries-manage` - Listar entregas para gestão
+- `GET /api/deliveries-manage` - Listar entregas para gestão (com filtro por lockerId)
 - `DELETE /api/deliveries-manage/:id` - Deletar entrega
 
 ### Retirada (Pickup)
@@ -111,8 +111,8 @@ SistemaLocker/
 - `POST /api/pickup/complete` - Completar retirada
 
 ### Dashboard
-- `GET /api/dashboard/grid/:lockerId` - Grid de compartimentos
-- `GET /api/dashboard/stats/:lockerId` - Estatísticas do locker
+- `GET /api/dashboard/grid?lockerId={id}` - Grid de compartimentos por locker
+- `GET /api/dashboard/stats` - Estatísticas gerais do sistema
 
 ### Relatórios
 - `GET /api/report/deliveries` - Relatório de entregas
@@ -149,8 +149,8 @@ EMAIL_FROM=seu-email@gmail.com
 ```
 
 ### Tipos de E-mail
-1. **Código de Retirada** - Enviado após depósito da encomenda
-2. **Confirmação de Retirada** - Enviado após retirada do item
+1. **Código de Retirada** - Enviado após depósito da encomenda (para destinatário)
+2. **Confirmação de Retirada** - Enviado após retirada do item (para destinatário e remetente)
 
 ### Templates
 - Localização: `backend/templates/emailTemplate.js`
@@ -214,7 +214,7 @@ npx prisma studio
 2. Sistema valida e processa retirada
 3. Compartimento volta para `DISPONIVEL`
 4. Entrega fica `RETIRADO`
-5. Envia e-mail de confirmação
+5. Envia e-mail de confirmação para **destinatário e remetente**
 
 ## 🛡️ Validações e Regras
 
@@ -234,15 +234,17 @@ npx prisma studio
 
 ### Dashboard
 - Visualização em tempo real dos compartimentos
+- Filtragem por locker (performance otimizada)
 - Status baseado em entregas ativas
 - Operações de bloqueio/desbloqueio
 - Estatísticas e analytics
 
 ### Gestão de Entregas
-- Listagem completa com filtros
+- Listagem completa com filtros por locker
 - Busca por código, status, data
 - Operações de exclusão (regras aplicadas)
 - Histórico completo
+- Separação correta por locker
 
 ### Sistema de Retirada
 - Interface tablet-friendly
@@ -287,8 +289,6 @@ Para suporte técnico ou dúvidas:
 
 ---
 
-**Versão:** 1.0.0  
-**Última atualização:** Março 2026  
+**Versão:** 1.1.0  
+**Última atualização:** Abril 2026  
 **Desenvolvido por:** Murilo Carias
-# sistemaLocker
-# SistemaLocker
