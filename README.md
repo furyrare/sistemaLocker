@@ -10,7 +10,7 @@ Sistema completo de gerenciamento de lockers inteligentes para armazenamento e r
 - **Porta:** 4000
 - **Banco:** Microsoft SQL Server
 - **ORM:** Prisma
-- **Autenticação:** JWT (implementado)
+- **Autenticação:** JWT (implementação futura)
 
 ### Frontend (React + Next.js)
 - **Framework:** Next.js 13+
@@ -252,12 +252,8 @@ npx prisma studio
 
 ## 🔮 Próximos Melhorias
 
-### Implementados Recentemente
-- [x] Sistema de autenticação JWT
-- [x] Interface de login completa
-- [x] Proteção de rotas
-
 ### Em Desenvolvimento
+- [ ] Sistema de autenticação JWT
 - [ ] Interface mobile app
 - [ ] Notificações push
 - [ ] Integração com APIs externas
