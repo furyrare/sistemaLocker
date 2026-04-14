@@ -7,6 +7,8 @@ import DetailsModalUltimate from '../../components/DetailsModalUltimate';
 
 export default function PedidosClient() {
   const [pedidos, setPedidos] = useState([]);
+  const [lockers, setLockers] = useState([]);
+  const [selectedLocker, setSelectedLocker] = useState('');
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [deleting, setDeleting] = useState(null);
@@ -20,12 +22,34 @@ export default function PedidosClient() {
   });
 
   useEffect(() => {
-    loadPedidos();
+    loadLockers();
   }, []);
+
+  useEffect(() => {
+    if (selectedLocker) {
+      loadPedidos();
+    }
+  }, [selectedLocker]);
+
+  async function loadLockers() {
+    try {
+      setLoading(true);
+      const response = await apiGet('/api/lockers-manage');
+      const data = response.data || response;
+      setLockers(data);
+      if (data[0]?.id) {
+        setSelectedLocker(data[0].id);
+      }
+    } catch (e) {
+      setError(e.message);
+    }
+  }
 
   async function loadPedidos() {
     try {
-      const data = await apiGet('/api/deliveries-manage');
+      setLoading(true);
+      const url = selectedLocker ? `/api/deliveries-manage?lockerId=${encodeURIComponent(selectedLocker)}` : '/api/deliveries-manage';
+      const data = await apiGet(url);
       setPedidos(data);
     } catch (e) {
       setError(e.message);
@@ -140,28 +164,45 @@ export default function PedidosClient() {
 
   return (
     <div className="space-y-6">
-      {/* Botões de filtro */}
-      <div className="flex gap-2">
-        <button
-          onClick={() => setShowHistorico(false)}
-          className={`px-4 py-2 rounded-lg font-medium transition-colors ${
-            !showHistorico 
-              ? 'bg-slate-900 text-white' 
-              : 'bg-slate-100 text-slate-700 hover:bg-slate-200'
-          }`}
-        >
-          Pedidos Ativos
-        </button>
-        <button
-          onClick={() => setShowHistorico(true)}
-          className={`px-4 py-2 rounded-lg font-medium transition-colors ${
-            showHistorico 
-              ? 'bg-slate-900 text-white' 
-              : 'bg-slate-100 text-slate-700 hover:bg-slate-200'
-          }`}
-        >
-          📋 Histórico
-        </button>
+      {/* Filtro de Locker e Botões de filtro */}
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+        <div className="flex items-center gap-4">
+          <label className="text-sm font-medium text-slate-700">Locker:</label>
+          <select
+            value={selectedLocker}
+            onChange={(e) => setSelectedLocker(e.target.value)}
+            className="rounded-lg border bg-white px-3 py-2 text-sm"
+          >
+            {lockers.map((locker) => (
+              <option key={locker.id} value={locker.id}>
+                {locker.nome}
+              </option>
+            ))}
+          </select>
+        </div>
+        
+        <div className="flex gap-2">
+          <button
+            onClick={() => setShowHistorico(false)}
+            className={`px-4 py-2 rounded-lg font-medium transition-colors ${
+              !showHistorico 
+                ? 'bg-slate-900 text-white' 
+                : 'bg-slate-100 text-slate-700 hover:bg-slate-200'
+            }`}
+          >
+            Pedidos Ativos
+          </button>
+          <button
+            onClick={() => setShowHistorico(true)}
+            className={`px-4 py-2 rounded-lg font-medium transition-colors ${
+              showHistorico 
+                ? 'bg-slate-900 text-white' 
+                : 'bg-slate-100 text-slate-700 hover:bg-slate-200'
+            }`}
+          >
+            Histórico
+          </button>
+        </div>
       </div>
 
       {error && (
