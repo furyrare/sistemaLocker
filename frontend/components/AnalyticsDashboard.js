@@ -86,7 +86,9 @@ export default function AnalyticsDashboard() {
       const url = URL.createObjectURL(blob);
       const link = document.createElement('a');
       link.href = url;
-      link.download = `Relatorio_Entregas_Dispetral_${new Date().toISOString().split('T')[0]}.csv`;
+      const hoje = new Date();
+      const dataFormatada = `${hoje.getDate().toString().padStart(2, '0')}-${(hoje.getMonth() + 1).toString().padStart(2, '0')}-${hoje.getFullYear()}`;
+      link.download = `RelatorioLocker_${dataFormatada}.csv`;
       document.body.appendChild(link);
       link.click();
       document.body.removeChild(link);
