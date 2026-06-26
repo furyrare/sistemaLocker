@@ -13,39 +13,92 @@ function normalizePhone(phone) {
   return digits.startsWith('55') ? digits : `55${digits}`;
 }
 
-async function sendText(phone, text) {
-  if (!isConfigured()) {
-    console.log('⚠️  WhatsApp (Suri) não configurado — pulando envio');
-    return null;
+function headers() {
+  return {
+    'Authorization': `Bearer ${SURI_TOKEN}`,
+    'Content-Type': 'application/json',
+  };
+}
+
+/**
+ * Busca contato pelo telefone. Retorna o userId interno do Suri.
+ * Se não encontrar, cria o contato.
+ */
+async function getOrCreateContact(phone, name) {
+  const normalizedPhone = normalizePhone(phone);
+
+  // Tentar buscar contato existente
+  const searchRes = await fetch(
+    `${SURI_URL}/api/contacts?phone=${normalizedPhone}&channelId=${SURI_CHANNEL}`,
+    { headers: headers() }
+  );
+
+  if (searchRes.ok) {
+    const data = await searchRes.json();
+    const contact = data?.data?.[0] || data?.data || null;
+    if (contact?.id) {
+      return contact.id;
+    }
   }
 
-  const body = {
-    phone: normalizePhone(phone),
-    channelId: SURI_CHANNEL,
-    message: text,
-  };
-
-  const res = await fetch(`${SURI_URL}/api/contacts/send-message`, {
+  // Contato não encontrado — criar
+  const createRes = await fetch(`${SURI_URL}/api/contacts`, {
     method: 'POST',
-    headers: {
-      'Authorization': `Bearer ${SURI_TOKEN}`,
-      'Content-Type': 'application/json',
-    },
-    body: JSON.stringify(body),
+    headers: headers(),
+    body: JSON.stringify({
+      phone: normalizedPhone,
+      channelId: SURI_CHANNEL,
+      name: name || normalizedPhone,
+    }),
+  });
+
+  if (!createRes.ok) {
+    const err = await createRes.text();
+    throw new Error(`Suri criar contato ${createRes.status}: ${err}`);
+  }
+
+  const created = await createRes.json();
+  const userId = created?.data?.id || created?.id;
+  if (!userId) throw new Error('Suri: contato criado mas ID não retornado');
+  return userId;
+}
+
+/**
+ * Envia mensagem de texto para um userId Suri.
+ */
+async function sendText(userId, text) {
+  const res = await fetch(`${SURI_URL}/api/messages/send`, {
+    method: 'POST',
+    headers: headers(),
+    body: JSON.stringify({
+      userId,
+      message: { text },
+    }),
   });
 
   if (!res.ok) {
-    const responseText = await res.text();
-    throw new Error(`Suri API ${res.status}: ${responseText}`);
+    const err = await res.text();
+    throw new Error(`Suri enviar mensagem ${res.status}: ${err}`);
   }
 
   return res.json();
 }
 
 /**
- * Envia código de retirada via WhatsApp após depósito.
- * Mesmo conteúdo do e-mail em formato texto.
+ * Pipeline completo: normaliza telefone → busca/cria contato → envia mensagem.
  */
+async function sendWhatsapp(phone, name, text) {
+  if (!isConfigured()) {
+    console.log('⚠️  WhatsApp (Suri) não configurado — pulando envio');
+    return null;
+  }
+
+  const userId = await getOrCreateContact(phone, name);
+  return sendText(userId, text);
+}
+
+// ─── Mensagens ────────────────────────────────────────────────────────────────
+
 async function sendPickupCodeWhatsapp({ phone, recipientName, pickupCode, lockerLocation, compartmentNumber, description }) {
   const message =
 `Olá, *${recipientName}*!
@@ -64,20 +117,11 @@ Ao concluir o processo, você receberá uma mensagem avisando que seu pedido foi
 *Dispetral:* Trabalhando junto com você para o desenvolvimento do país.`;
 
   console.log(`📱 Enviando WhatsApp (código retirada) para: ${phone}`);
-  try {
-    const result = await sendText(phone, message);
-    console.log('✅ WhatsApp (código retirada) enviado com sucesso');
-    return result;
-  } catch (err) {
-    console.error('❌ Erro ao enviar WhatsApp (código retirada):', err.message);
-    throw err;
-  }
+  const result = await sendWhatsapp(phone, recipientName, message);
+  console.log('✅ WhatsApp (código retirada) enviado com sucesso');
+  return result;
 }
 
-/**
- * Envia confirmação de retirada via WhatsApp.
- * Mesmo conteúdo do e-mail em formato texto.
- */
 async function sendPickupConfirmationWhatsapp({ phone, recipientName }) {
   const message =
 `Olá, *${recipientName}*!
@@ -89,14 +133,9 @@ A Dispetral agradece pela preferência!
 *Dispetral:* Trabalhando junto com você para o desenvolvimento do país.`;
 
   console.log(`📱 Enviando WhatsApp (confirmação retirada) para: ${phone}`);
-  try {
-    const result = await sendText(phone, message);
-    console.log('✅ WhatsApp (confirmação retirada) enviado com sucesso');
-    return result;
-  } catch (err) {
-    console.error('❌ Erro ao enviar WhatsApp (confirmação retirada):', err.message);
-    throw err;
-  }
+  const result = await sendWhatsapp(phone, recipientName, message);
+  console.log('✅ WhatsApp (confirmação retirada) enviado com sucesso');
+  return result;
 }
 
 module.exports = { sendPickupCodeWhatsapp, sendPickupConfirmationWhatsapp };
