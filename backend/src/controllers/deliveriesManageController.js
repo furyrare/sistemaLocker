@@ -64,17 +64,17 @@ async function deleteDelivery(req, res, next) {
     if (delivery.status !== 'RETIRADO') {
       await prisma.$transaction(async (tx) => {
         // Deletar logs de retirada primeiro
-        await tx.RetiradaLog.deleteMany({
+        await tx.retiradaLog.deleteMany({
           where: { entregaId: id }
         });
-        
+
         // Deletar a entrega
-        await tx.Entrega.delete({
+        await tx.entrega.delete({
           where: { id }
         });
-        
+
         // Liberar o compartimento
-        await tx.Compartimento.update({
+        await tx.compartimento.update({
           where: { id: delivery.compartimentoId },
           data: { status: 'DISPONIVEL' }
         });

@@ -1,185 +1,154 @@
 'use client';
 
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
+import { createPortal } from 'react-dom';
+import { getStatusText, formatDate } from '../lib/utils';
 
-export default function DetailsModalUltimate({ 
-  isOpen, 
-  onClose, 
-  pedido 
-}) {
+export default function DetailsModalUltimate({ isOpen, onClose, pedido }) {
+  const [mounted, setMounted] = useState(false);
+  const [copied, setCopied] = useState(false);
+
+  useEffect(() => { setMounted(true); }, []);
+
   useEffect(() => {
-    if (isOpen && pedido) {
-      // Criar elemento DOM diretamente
-      const modalOverlay = document.createElement('div');
-      modalOverlay.id = 'details-modal-ultimate-overlay';
-      modalOverlay.style.cssText = `
-        position: fixed !important;
-        top: 0 !important;
-        left: 0 !important;
-        right: 0 !important;
-        bottom: 0 !important;
-        width: 100vw !important;
-        height: 100vh !important;
-        background-color: rgba(0, 0, 0, 0.6) !important;
-        z-index: 999999999999 !important;
-        display: flex !important;
-        align-items: center !important;
-        justify-content: center !important;
-      `;
+    if (!isOpen) return;
+    const handleKey = (e) => { if (e.key === 'Escape') onClose(); };
+    document.addEventListener('keydown', handleKey);
+    return () => document.removeEventListener('keydown', handleKey);
+  }, [isOpen, onClose]);
 
-      const modalContent = document.createElement('div');
-      modalContent.style.cssText = `
-        position: relative !important;
-        z-index: 1000000000000 !important;
-        background: white !important;
-        border-radius: 12px !important;
-        padding: 16px !important;
-        max-width: 400px !important;
-        width: 100% !important;
-        margin: 16px !important;
-        box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5) !important;
-      `;
+  if (!mounted || !isOpen || !pedido) return null;
 
-      modalContent.innerHTML = `
-        <div style="padding: 0;">
-          <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px;">
-            <h2 style="font-size: 16px; font-weight: bold; color: #111827; margin: 0;">Detalhes do Pedido</h2>
-            <button id="details-close" style="background: none; border: none; color: #9ca3af; font-size: 20px; cursor: pointer; padding: 0; line-height: 1;">×</button>
+  const data = pedido.delivery || pedido;
+
+  function handleCopy() {
+    const text = [
+      `PEDIDO: ${data.nomeDestinatario || '-'}`,
+      `Email: ${data.emailDestinatario || '-'}`,
+      `Telefone: ${data.telefoneDestinatario || '-'}`,
+      `Nº Pedido: ${data.numeroPedido || '-'}`,
+      data.emailRemetente ? `Remetente: ${data.emailRemetente}` : null,
+      `Locker: ${pedido.Armario?.nome || '-'}`,
+      `Caixa: ${pedido.Compartimento?.numero || '-'}`,
+      `Cód. Depósito: ${pedido.codigoDeposito || data.codigoDeposito || '-'}`,
+      `Cód. Retirada: ${pedido.codigoRetirada || data.codigoRetirada || '-'}`,
+      `Descrição: ${data.descricao || '-'}`,
+      `Status: ${getStatusText(data.status)}`,
+      `Criado: ${formatDate(data.dataCriacao) || '-'}`,
+      `Depósito: ${formatDate(data.dataDeposito) || 'Não realizado'}`,
+      `Retirado: ${formatDate(data.dataRetirada) || 'Não retirado'}`,
+    ].filter(Boolean).join('\n');
+
+    navigator.clipboard.writeText(text).then(() => {
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    });
+  }
+
+  const codigoDeposito = pedido.codigoDeposito || data.codigoDeposito;
+  const codigoRetirada = pedido.codigoRetirada || data.codigoRetirada;
+
+  return createPortal(
+    <div
+      className="fixed inset-0 z-50 flex items-center justify-center p-4"
+      onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}
+    >
+      {/* Overlay */}
+      <div className="absolute inset-0 bg-black/50 backdrop-blur-sm" onClick={onClose} />
+
+      {/* Card */}
+      <div className="relative bg-white rounded-2xl shadow-2xl w-full max-w-sm flex flex-col overflow-hidden max-h-[90vh]">
+        {/* Header */}
+        <div className="flex items-center justify-between px-5 py-4 border-b border-slate-100">
+          <h2 className="font-semibold text-slate-900">Detalhes do Pedido</h2>
+          <button
+            onClick={onClose}
+            className="text-slate-400 hover:text-slate-600 transition rounded-lg p-1 hover:bg-slate-100"
+          >
+            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+            </svg>
+          </button>
+        </div>
+
+        {/* Body */}
+        <div className="flex-1 overflow-y-auto p-5 space-y-4">
+          {/* Códigos */}
+          <div className="rounded-xl bg-blue-50 border border-blue-100 p-4">
+            <p className="text-xs font-semibold text-blue-700 uppercase tracking-wide mb-3">Códigos</p>
+            <div className="grid grid-cols-2 gap-3">
+              <div className="text-center">
+                <p className="text-xs text-blue-500 mb-1">Depósito</p>
+                <p className="font-mono text-lg font-bold text-blue-900">{codigoDeposito || '-'}</p>
+              </div>
+              <div className="text-center">
+                <p className="text-xs text-blue-500 mb-1">Retirada</p>
+                <p className="font-mono text-lg font-bold text-blue-900">{codigoRetirada || '-'}</p>
+              </div>
+            </div>
           </div>
 
-          <div style="display: flex; flex-direction: column; gap: 10px;">
-            <!-- Códigos -->
-            <div style="background: #eff6ff; border: 1px solid #bfdbfe; border-radius: 8px; padding: 8px;">
-              <h3 style="font-size: 12px; font-weight: 600; color: #1e40af; margin: 0 0 6px 0;">Códigos</h3>
-              <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 6px;">
-                <div style="text-align: center;">
-                  <div style="font-size: 10px; color: #2563eb;">Depósito</div>
-                  <div style="font-size: 14px; font-weight: bold; color: #1e40af;">${pedido.codigoDeposito || '-'}</div>
-                </div>
-                <div style="text-align: center;">
-                  <div style="font-size: 10px; color: #2563eb;">Retirada</div>
-                  <div style="font-size: 14px; font-weight: bold; color: #1e40af;">${pedido.codigoRetirada || '-'}</div>
-                </div>
+          {/* Informações */}
+          <div className="rounded-xl bg-slate-50 border border-slate-100 p-4 space-y-2">
+            <p className="text-xs font-semibold text-slate-600 uppercase tracking-wide mb-1">Informações</p>
+            {[
+              ['Cliente', data.nomeDestinatario],
+              ['Email', data.emailDestinatario],
+              ['Telefone', data.telefoneDestinatario],
+              ['Nº Pedido', data.numeroPedido],
+              data.emailRemetente ? ['Remetente', data.emailRemetente] : null,
+              ['Locker', pedido.Armario?.nome],
+              ['Caixa', pedido.Compartimento?.numero],
+            ].filter(Boolean).map(([label, value]) => (
+              <div key={label} className="flex justify-between items-start gap-2 text-sm">
+                <span className="text-slate-400 shrink-0">{label}</span>
+                <span className="text-slate-800 font-medium text-right break-all">{value || '-'}</span>
               </div>
-            </div>
+            ))}
+          </div>
 
-            <!-- Informações -->
-            <div style="background: #f9fafb; border: 1px solid #e5e7eb; border-radius: 8px; padding: 8px;">
-              <h3 style="font-size: 12px; font-weight: 600; color: #111827; margin: 0 0 6px 0;">Informações</h3>
-              <div style="display: flex; flex-direction: column; gap: 3px; font-size: 11px;">
-                <div><span style="color: #6b7280;">Cliente:</span> <span style="font-weight: 500;">${pedido.delivery?.nomeDestinatario || pedido.nomeDestinatario || '-'}</span></div>
-                <div><span style="color: #6b7280;">Email:</span> <span style="font-weight: 500;">${pedido.delivery?.emailDestinatario || pedido.emailDestinatario || '-'}</span></div>
-                <div><span style="color: #6b7280;">Telefone:</span> <span style="font-weight: 500;">${pedido.delivery?.telefoneDestinatario || pedido.telefoneDestinatario || '-'}</span></div>
-                <div><span style="color: #6b7280;">Pedido:</span> <span style="font-weight: 500;">${pedido.delivery?.numeroPedido || pedido.numeroPedido || '-'}</span></div>
-                ${pedido.delivery?.emailRemetente || pedido.emailRemetente ? `<div><span style="color: #6b7280;">Enviado por:</span> <span style="font-weight: 500;">${pedido.delivery?.emailRemetente || pedido.emailRemetente}</span></div>` : ''}
-                <div><span style="color: #6b7280;">Locker:</span> <span style="font-weight: 500;">${pedido.Armario?.nome || '-'}</span></div>
-                <div><span style="color: #6b7280;">Caixa:</span> <span style="font-weight: 500;">${pedido.Compartimento?.numero || '-'}</span></div>
+          {/* Descrição */}
+          {data.descricao && (
+            <div className="rounded-xl bg-violet-50 border border-violet-100 p-4">
+              <p className="text-xs font-semibold text-violet-700 uppercase tracking-wide mb-1">Descrição</p>
+              <p className="text-sm text-slate-700">{data.descricao}</p>
+            </div>
+          )}
+
+          {/* Datas */}
+          <div className="rounded-xl bg-emerald-50 border border-emerald-100 p-4 space-y-2">
+            <p className="text-xs font-semibold text-emerald-700 uppercase tracking-wide mb-1">Histórico</p>
+            {[
+              ['Criado', formatDate(data.dataCriacao)],
+              ['Depositado', formatDate(data.dataDeposito) || 'Não realizado'],
+              ['Retirado', formatDate(data.dataRetirada) || 'Não retirado'],
+              ['Status', getStatusText(data.status)],
+            ].map(([label, value]) => (
+              <div key={label} className="flex justify-between text-sm">
+                <span className="text-emerald-600">{label}</span>
+                <span className="text-slate-800 font-medium">{value || '-'}</span>
               </div>
-            </div>
-
-            <!-- Descrição -->
-            <div style="background: #faf5ff; border: 1px solid #e9d5ff; border-radius: 8px; padding: 8px;">
-              <h3 style="font-size: 12px; font-weight: 600; color: #7c3aed; margin: 0 0 3px 0;">Descrição</h3>
-              <div style="font-size: 11px; color: #111827;">${pedido.delivery?.descricao || pedido.descricao || 'Sem descrição'}</div>
-            </div>
-
-            <!-- Datas -->
-            <div style="background: #f0fdf4; border: 1px solid #bbf7d0; border-radius: 8px; padding: 8px;">
-              <h3 style="font-size: 12px; font-weight: 600; color: #16a34a; margin: 0 0 6px 0;">📅 Registro de Datas</h3>
-              <div style="display: flex; flex-direction: column; gap: 3px; font-size: 11px;">
-                <div><span style="color: #16a34a;">Criado:</span> <span style="font-weight: 500;">${formatDate(pedido.delivery?.dataCriacao || pedido.dataCriacao) || 'Data não disponível'}</span></div>
-                <div><span style="color: #16a34a;">Depósito:</span> <span style="font-weight: 500;">${formatDate(pedido.delivery?.dataDeposito || pedido.dataDeposito) || 'Não realizado'}</span></div>
-                <div><span style="color: #16a34a;">Retirado:</span> <span style="font-weight: 500;">${formatDate(pedido.delivery?.dataRetirada || pedido.dataRetirada) || 'Não retirado'}</span></div>
-                <div><span style="color: #16a34a;">Status:</span> <span style="font-weight: 500; color: #16a34a;">${getStatusText(pedido.delivery?.status || pedido.status)}</span></div>
-              </div>
-            </div>
-
-            <!-- Botões -->
-            <div style="display: flex; gap: 6px; padding-top: 6px;">
-              <button id="details-copy" style="flex: 1; padding: 6px 12px; background: #6b7280; color: white; border-radius: 6px; border: none; cursor: pointer; font-weight: 500; font-size: 11px;">
-                📋 Copiar Log
-              </button>
-              <button id="details-close-btn" style="flex: 1; padding: 6px 12px; background: #3b82f6; color: white; border-radius: 6px; border: none; cursor: pointer; font-weight: 500; font-size: 11px;">
-                Fechar
-              </button>
-            </div>
+            ))}
           </div>
         </div>
-      `;
 
-      // Função para formatar datas
-      function formatDate(dateString) {
-        if (!dateString) return null;
-        try {
-          const date = new Date(dateString);
-          if (isNaN(date.getTime())) return null;
-          return date.toLocaleString('pt-BR');
-        } catch (e) {
-          return null;
-        }
-      }
-
-      // Função para obter texto do status
-      function getStatusText(status) {
-        switch(status) {
-          case 'PENDENTE_DEPOSITO': return 'Aguardando Depósito';
-          case 'PRONTO_PARA_RETIRADA': return 'Pronta para Retirada';
-          case 'PICKED_UP':
-          case 'RETIRADO': return 'Retirada';
-          default: return status;
-        }
-      }
-
-      // Adicionar ao body
-      modalOverlay.appendChild(modalContent);
-      document.body.appendChild(modalOverlay);
-
-      // Forçar header para trás
-      const headers = document.querySelectorAll('header');
-      headers.forEach(header => {
-        header.style.zIndex = '1';
-        header.style.position = 'relative';
-      });
-
-      // Event listeners
-      const handleClose = () => {
-        cleanup();
-        onClose();
-      };
-
-      const handleCopy = () => {
-        const logData = `PEDIDO DETALHES\nData: ${new Date(pedido.createdAt).toLocaleString('pt-BR')}\nDepósito: ${pedido.locker?.name}\nRetirado: ${pedido.compartment?.number}\nCliente: ${pedido.recipientName}\nEmail: ${pedido.recipientEmail}\nTelefone: ${pedido.recipientPhone || '-'}\nNúmero Pedido: ${pedido.orderNumber || '-'}\n${pedido.senderEmail ? `Enviado por: ${pedido.senderEmail}\n` : ''}Código Depósito: ${pedido.depositCode}\nCódigo Retirada: ${pedido.pickupCode}\nDescrição: ${pedido.description}\nStatus: ${getStatusText(pedido.status)}\n${pedido.placedAt ? `Data Depósito: ${new Date(pedido.placedAt).toLocaleString('pt-BR')}\n` : ''}${pedido.pickedUpAt ? `Data Retirada: ${new Date(pedido.pickedUpAt).toLocaleString('pt-BR')}` : ''}`;
-        navigator.clipboard.writeText(logData);
-        alert('Log copiado para a área de transferência!');
-      };
-
-      const handleOverlayClick = (e) => {
-        if (e.target === modalOverlay) {
-          cleanup();
-          onClose();
-        }
-      };
-
-      document.getElementById('details-close').addEventListener('click', handleClose);
-      document.getElementById('details-close-btn').addEventListener('click', handleClose);
-      document.getElementById('details-copy').addEventListener('click', handleCopy);
-      modalOverlay.addEventListener('click', handleOverlayClick);
-
-      // Cleanup function
-      const cleanup = () => {
-        if (modalOverlay && modalOverlay.parentNode) {
-          modalOverlay.parentNode.removeChild(modalOverlay);
-        }
-        // Restaurar z-index do header
-        headers.forEach(header => {
-          header.style.zIndex = '';
-        });
-      };
-
-      // Limpar quando fechar
-      return cleanup;
-    }
-  }, [isOpen, onClose, pedido]);
-
-  return null;
+        {/* Footer */}
+        <div className="px-5 py-4 border-t border-slate-100 flex gap-3">
+          <button
+            onClick={handleCopy}
+            className="flex-1 rounded-xl border border-slate-200 bg-slate-50 py-2.5 text-sm font-medium text-slate-700 transition hover:bg-slate-100"
+          >
+            {copied ? '✓ Copiado' : '📋 Copiar'}
+          </button>
+          <button
+            onClick={onClose}
+            className="flex-1 rounded-xl bg-blue-600 py-2.5 text-sm font-medium text-white transition hover:bg-blue-700"
+          >
+            Fechar
+          </button>
+        </div>
+      </div>
+    </div>,
+    document.body
+  );
 }

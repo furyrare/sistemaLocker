@@ -128,34 +128,30 @@ async function depositByCode({ code, ipAddress }) {
     return updatedDelivery;
   });
 
-  // Enviar e-mail com código de retirada após depósito
+  // Enviar e-mail com código de retirada após depósito e marcar notificado apenas se enviado
   try {
     await sendPickupCodeEmail({
       to: delivery.emailDestinatario,
-      recipientName: delivery.nomeDestinatario, 
+      recipientName: delivery.nomeDestinatario,
       recipientEmail: delivery.emailDestinatario,
       telefoneDestinatario: delivery.telefoneDestinatario || '',
       numeroPedido: delivery.numeroPedido || '',
-      lockerLocation: delivery.Armario.localizacao, 
+      lockerLocation: delivery.Armario.localizacao,
       compartmentNumber: delivery.Compartimento.numero,
       pickupCode: delivery.codigoRetirada,
       description: delivery.descricao,
       senderEmail: delivery.emailRemetente
     });
     console.log('E-mail enviado com sucesso para:', delivery.emailDestinatario);
+    await prisma.entrega.update({
+      where: { id: delivery.id },
+      data: { dataNotificacao: new Date() }
+    });
   } catch (emailError) {
     console.error('❌ Erro ao enviar e-mail de depósito:', emailError);
     console.error('❌ Stack trace:', emailError.stack);
-    // Não interromper o processo se o e-mail falhar
+    // dataNotificacao não é definido — retirada ficará bloqueada até reenvio manual
   }
-  
-  // Marcar como notificado
-  await prisma.entrega.update({
-    where: { id: delivery.id },
-    data: {
-      dataNotificacao: new Date()
-    }
-  });
 
   return { 
     delivery: result, 
@@ -208,7 +204,7 @@ async function pickupByCode({ code, ipAddress }) {
       data: { status: 'DISPONIVEL' }
     });
 
-    await tx.RetiradaLog.create({
+    await tx.retiradaLog.create({
       data: {
         id: crypto.randomUUID(),
         entregaId: delivery.id,
@@ -235,17 +231,19 @@ async function pickupByCode({ code, ipAddress }) {
     });
     console.log('📧 E-mail de confirmação enviado para o destinatário:', delivery.emailDestinatario);
     
-    // Enviar para o remetente (quem enviou o pacote)
-    await sendPickupConfirmationEmail({
-      to: delivery.emailRemetente,
-      recipientName: delivery.nomeDestinatario, // Nome de quem retirou
-      lockerLocation: delivery.Armario.localizacao,
-      compartmentNumber: delivery.Compartimento.numero,
-      description: delivery.descricao,
-      pickupTime: new Date().toLocaleString('pt-BR'),
-      senderEmail: delivery.emailRemetente
-    });
-    console.log('📧 E-mail de confirmação enviado para o remetente:', delivery.emailRemetente);
+    // Enviar para o remetente (quem enviou o pacote) — apenas se e-mail informado
+    if (delivery.emailRemetente) {
+      await sendPickupConfirmationEmail({
+        to: delivery.emailRemetente,
+        recipientName: delivery.nomeDestinatario,
+        lockerLocation: delivery.Armario.localizacao,
+        compartmentNumber: delivery.Compartimento.numero,
+        description: delivery.descricao,
+        pickupTime: new Date().toLocaleString('pt-BR'),
+        senderEmail: delivery.emailRemetente
+      });
+      console.log('📧 E-mail de confirmação enviado para o remetente:', delivery.emailRemetente);
+    }
     
   } catch (emailError) {
     console.error('❌ Erro ao enviar e-mail de confirmação de retirada:', emailError);

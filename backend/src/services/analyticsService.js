@@ -67,56 +67,63 @@ async function getEntregaAnalytics({ lockerId, startDate, endDate }) {
     // Entregas por dia (últimos 30 dias)
     const thirtyDaysAgo = new Date();
     thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
-    
-    // Montar query dinamicamente para SQL Server
-    let query = `
-      SELECT 
-        FORMAT(dataCriacao, 'dd/MM/yyyy') as date,
-        COUNT(*) as count
-      FROM Entregas
-      WHERE dataCriacao >= '${thirtyDaysAgo.toISOString().split('T')[0]}'
-    `;
-    
-    if (lockerId) {
-      query += ` AND armarioId = '${lockerId}'`;
+    const periodStart = startDate ? new Date(startDate) : thirtyDaysAgo;
+    const periodEnd = endDate ? new Date(endDate) : null;
+
+    let deliveriesByDay;
+    if (lockerId && periodEnd) {
+      deliveriesByDay = await prisma.$queryRaw`
+        SELECT FORMAT(dataCriacao, 'dd/MM/yyyy') as date, COUNT(*) as count
+        FROM Entregas
+        WHERE dataCriacao >= ${periodStart} AND dataCriacao <= ${periodEnd} AND armarioId = ${lockerId}
+        GROUP BY FORMAT(dataCriacao, 'dd/MM/yyyy') ORDER BY date DESC`;
+    } else if (lockerId) {
+      deliveriesByDay = await prisma.$queryRaw`
+        SELECT FORMAT(dataCriacao, 'dd/MM/yyyy') as date, COUNT(*) as count
+        FROM Entregas
+        WHERE dataCriacao >= ${periodStart} AND armarioId = ${lockerId}
+        GROUP BY FORMAT(dataCriacao, 'dd/MM/yyyy') ORDER BY date DESC`;
+    } else if (periodEnd) {
+      deliveriesByDay = await prisma.$queryRaw`
+        SELECT FORMAT(dataCriacao, 'dd/MM/yyyy') as date, COUNT(*) as count
+        FROM Entregas
+        WHERE dataCriacao >= ${periodStart} AND dataCriacao <= ${periodEnd}
+        GROUP BY FORMAT(dataCriacao, 'dd/MM/yyyy') ORDER BY date DESC`;
+    } else {
+      deliveriesByDay = await prisma.$queryRaw`
+        SELECT FORMAT(dataCriacao, 'dd/MM/yyyy') as date, COUNT(*) as count
+        FROM Entregas
+        WHERE dataCriacao >= ${periodStart}
+        GROUP BY FORMAT(dataCriacao, 'dd/MM/yyyy') ORDER BY date DESC`;
     }
-    
-    if (startDate) {
-      query += ` AND dataCriacao >= '${new Date(startDate).toISOString().split('T')[0]}'`;
-    }
-    
-    if (endDate) {
-      query += ` AND dataCriacao <= '${new Date(endDate).toISOString().split('T')[0]}'`;
-    }
-    
-    query += ` GROUP BY FORMAT(dataCriacao, 'dd/MM/yyyy') ORDER BY date DESC`;
-    
-    const deliveriesByDay = await prisma.$queryRawUnsafe(query);
 
     // Calcular estatísticas
     const pickedUpDeliveries = deliveriesByStatus.find(s => s.status === 'RETIRADO')?._count.status || 0;
     const pendingDeliveries = deliveriesByStatus.find(s => s.status === 'PRONTO_PARA_RETIRADA')?._count.status || 0;
     
     // Tempo médio de retirada (em horas)
-    let timeQuery = `
-      SELECT AVG(DATEDIFF(hour, dataCriacao, dataRetirada)) as avgHours
-      FROM Entregas
-      WHERE dataRetirada IS NOT NULL
-    `;
-    
-    if (lockerId) {
-      timeQuery += ` AND armarioId = '${lockerId}'`;
+    let averagePickupTime;
+    if (lockerId && periodEnd) {
+      averagePickupTime = await prisma.$queryRaw`
+        SELECT AVG(DATEDIFF(hour, dataCriacao, dataRetirada)) as avgHours
+        FROM Entregas
+        WHERE dataRetirada IS NOT NULL AND armarioId = ${lockerId} AND dataCriacao >= ${periodStart} AND dataCriacao <= ${periodEnd}`;
+    } else if (lockerId) {
+      averagePickupTime = await prisma.$queryRaw`
+        SELECT AVG(DATEDIFF(hour, dataCriacao, dataRetirada)) as avgHours
+        FROM Entregas
+        WHERE dataRetirada IS NOT NULL AND armarioId = ${lockerId} AND dataCriacao >= ${periodStart}`;
+    } else if (periodEnd) {
+      averagePickupTime = await prisma.$queryRaw`
+        SELECT AVG(DATEDIFF(hour, dataCriacao, dataRetirada)) as avgHours
+        FROM Entregas
+        WHERE dataRetirada IS NOT NULL AND dataCriacao >= ${periodStart} AND dataCriacao <= ${periodEnd}`;
+    } else {
+      averagePickupTime = await prisma.$queryRaw`
+        SELECT AVG(DATEDIFF(hour, dataCriacao, dataRetirada)) as avgHours
+        FROM Entregas
+        WHERE dataRetirada IS NOT NULL AND dataCriacao >= ${periodStart}`;
     }
-    
-    if (startDate) {
-      timeQuery += ` AND dataCriacao >= '${new Date(startDate).toISOString().split('T')[0]}'`;
-    }
-    
-    if (endDate) {
-      timeQuery += ` AND dataCriacao <= '${new Date(endDate).toISOString().split('T')[0]}'`;
-    }
-    
-    const averagePickupTime = await prisma.$queryRawUnsafe(timeQuery);
 
     const averagePickupTimeHours = averagePickupTime[0]?.avgHours || 0;
 

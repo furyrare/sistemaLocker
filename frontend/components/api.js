@@ -4,8 +4,7 @@
  * Centraliza o `fetch` e o tratamento de erro para não repetir lógica nas telas.
  */
 
-// Sempre usar a URL do backend
-export const API_BASE = 'http://localhost:4000';
+export const API_BASE = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000';
 
 export async function apiGet(path) {
   const url = `${API_BASE}${path}`;

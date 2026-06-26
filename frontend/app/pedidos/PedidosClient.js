@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react';
 import { apiGet, apiDelete } from '../../components/api';
 import ConfirmModal from '../../components/ConfirmModal';
 import DetailsModalUltimate from '../../components/DetailsModalUltimate';
+import { getStatusColor, getStatusText } from '../../lib/utils';
 
 export default function PedidosClient() {
   const [pedidos, setPedidos] = useState([]);
@@ -42,6 +43,8 @@ export default function PedidosClient() {
       }
     } catch (e) {
       setError(e.message);
+    } finally {
+      setLoading(false);
     }
   }
 
@@ -58,58 +61,11 @@ export default function PedidosClient() {
     }
   }
 
-  function handleDeleteClick(pedido) {
-    // Abrir modal de confirmação
-    setConfirmModal({
-      isOpen: true,
-      pedido,
-      action: 'apagar',
-      message: `Tem certeza que deseja apagar o pedido de ${pedido.nomeDestinatario}? Esta ação não pode ser desfeita.`
-    });
-  }
-
-  async function confirmDelete() {
-    const { pedido } = confirmModal;
-    
-    setDeleting(pedido.id);
-    try {
-      await apiDelete(`/api/deliveries-manage/${pedido.id}`);
-      setPedidos(pedidos.filter(p => p.id !== pedido.id));
-      setConfirmModal({ isOpen: false, pedido: null, action: '', message: '' });
-    } catch (e) {
-      setError(e.message);
-    } finally {
-      setDeleting(null);
-    }
-  }
-
-  function closeModal() {
-    setConfirmModal({ isOpen: false, pedido: null, action: '', message: '' });
-  }
-
   function getPedidosFiltrados() {
     if (showHistorico) {
       return pedidos.filter(p => p.status === 'RETIRADO');
     } else {
       return pedidos.filter(p => p.status !== 'RETIRADO');
-    }
-  }
-
-  function getStatusColor(status) {
-    switch (status) {
-      case 'PENDENTE_DEPOSITO': return 'bg-yellow-100 text-yellow-800';
-      case 'PRONTO_PARA_RETIRADA': return 'bg-blue-100 text-blue-800';
-      case 'RETIRADO': return 'bg-green-100 text-green-800';
-      default: return 'bg-gray-100 text-gray-800';
-    }
-  }
-
-  function getStatusText(status) {
-    switch (status) {
-      case 'PENDENTE_DEPOSITO': return 'Aguardando Depósito';
-      case 'PRONTO_PARA_RETIRADA': return 'Pronta para Retirada';
-      case 'RETIRADO': return 'Retirada';
-      default: return status;
     }
   }
 

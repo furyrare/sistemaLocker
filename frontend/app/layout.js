@@ -1,5 +1,7 @@
 import './globals.css';
 import Link from 'next/link';
+import Image from 'next/image';
+import NavLinks from '../components/NavLinks';
 
 export const metadata = {
   title: 'Smart Locker',
@@ -11,17 +13,19 @@ export default function RootLayout({ children }) {
     <html lang="pt-BR">
       <body>
         <div className="min-h-screen">
-          <header className="border-b bg-white">
-            <div className="mx-auto flex max-w-6xl items-center justify-between px-4 py-4">
-              <div className="font-semibold tracking-tight">Smart Locker</div>
-              <nav className="flex gap-4">
-                <Link href="/dashboard" className="text-slate-600 hover:text-slate-900">Dashboard</Link>
-                <Link href="/entregas" className="text-slate-600 hover:text-slate-900">Entregas</Link>
-                <Link href="/pedidos" className="text-slate-600 hover:text-slate-900">Pedidos</Link>
-                <Link href="/analise" className="text-slate-600 hover:text-slate-900">Analise</Link>
-                <Link href="/tablet" className="text-slate-600 hover:text-slate-900">Tablet</Link>
-                <Link href="/lockers" className="text-slate-600 hover:text-slate-900">Gerenciar Lockers</Link>
-              </nav>
+          <header className="sticky top-0 z-40 border-b border-slate-200 bg-white/95 backdrop-blur supports-[backdrop-filter]:bg-white/80">
+            <div className="mx-auto flex max-w-6xl items-center justify-between px-4 h-14">
+              <Link href="/dashboard" className="flex items-center">
+                <Image
+                  src="/logo.png"
+                  alt="Smart Locker"
+                  width={120}
+                  height={40}
+                  className="h-8 w-auto object-contain"
+                  priority
+                />
+              </Link>
+              <NavLinks />
             </div>
           </header>
 

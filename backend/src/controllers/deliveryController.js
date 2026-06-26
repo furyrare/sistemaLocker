@@ -103,16 +103,17 @@ async function corrigirStatusInconsistentes(req, res, next) {
     });
     
     console.log(`📊 Encontradas ${entregasInconsistentes.length} entregas inconsistentes`);
-    
-    // Atualizar cada compartimento para OCUPADO
-    for (const entrega of entregasInconsistentes) {
-      await prisma.compartimento.update({
-        where: { id: entrega.compartimentoId },
-        data: { status: 'OCUPADO' }
-      });
-      
-      console.log(`✅ Compartimento ${entrega.compartimento.numero} atualizado para OCUPADO`);
-    }
+
+    // Atualizar todos os compartimentos em uma única transação
+    await prisma.$transaction(async (tx) => {
+      for (const entrega of entregasInconsistentes) {
+        await tx.compartimento.update({
+          where: { id: entrega.compartimentoId },
+          data: { status: 'OCUPADO' }
+        });
+        console.log(`✅ Compartimento ${entrega.compartimento.numero} atualizado para OCUPADO`);
+      }
+    });
     
     res.json({
       success: true,

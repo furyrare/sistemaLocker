@@ -23,4 +23,6 @@ process.on('beforeExit', async () => {
   await prisma.$disconnect();
 });
 
-module.exports = { prisma };
+const { Prisma } = require('@prisma/client');
+
+module.exports = { prisma, Prisma };

@@ -9,286 +9,266 @@ Sistema completo de gerenciamento de lockers inteligentes para armazenamento e r
 ### Backend (Node.js + Express + Prisma + SQL Server)
 - **Porta:** 4000
 - **Banco:** Microsoft SQL Server
-- **ORM:** Prisma
-- **Autenticação:** JWT (implementação futura)
+- **ORM:** Prisma 5.22
+- **E-mail:** Nodemailer (SMTP)
+- **Validação:** Zod
+- **Segurança:** bcryptjs, crypto
 
 ### Frontend (React + Next.js)
-- **Framework:** Next.js 13+
-- **Estilização:** Tailwind CSS
+- **Framework:** Next.js 14 (App Router)
+- **Estilização:** Tailwind CSS + fonte Inter
 - **Estado:** React Hooks
-- **API:** Fetch nativo
+- **API:** Fetch nativo centralizado em `components/api.js`
 
 ## 📁 Estrutura de Arquivos
 
 ```
 SistemaLocker/
 ├── backend/
-│   ├── server.js                    # Servidor principal
-│   ├── package.json                 # Dependências
-│   ├── .env                         # Variáveis de ambiente
-│   ├── src/
-│   │   ├── controllers/             # Controladores da API
-│   │   │   ├── compartmentController.js
-│   │   │   ├── dashboardController.js
-│   │   │   ├── deliveryController.js
-│   │   │   ├── deliveriesListController.js
-│   │   │   ├── deliveriesManageController.js
-│   │   │   ├── lockersManageController.js
-│   │   │   ├── pickupController.js
-│   │   │   └── reportController.js
-│   │   ├── services/               # Lógica de negócio
-│   │   │   ├── deliveryService.js
-│   │   │   ├── emailService.js
-│   │   │   ├── reportService.js
-│   │   │   └── analyticsService.js
-│   │   ├── routes/                  # Rotas da API
-│   │   │   ├── compartmentRoutes.js
-│   │   │   ├── dashboardRoutes.js
-│   │   │   ├── deliveryRoutes.js
-│   │   │   ├── deliveriesListRoutes.js
-│   │   │   ├── deliveriesManageRoutes.js
-│   │   │   ├── lockersRoutes.js
-│   │   │   ├── lockersManageRoutes.js
-│   │   │   ├── pickupRoutes.js
-│   │   │   └── reportRoutes.js
-│   │   ├── db/
-│   │   │   └── prisma.js            # Conexão com banco
-│   │   └── utils/
-│   │       └── gerarCodigo.js      # Utilitários
+│   ├── server.js                          # Servidor principal (porta 4000)
+│   ├── .env                               # Variáveis de ambiente (ver seção abaixo)
 │   ├── prisma/
-│   │   ├── schema.prisma            # Schema do banco
-│   │   └── migrations/              # Migrações
-│   └── templates/
-│       └── emailTemplate.js         # Templates de e-mail
+│   │   └── schema.prisma                  # Schema do banco de dados
+│   └── src/
+│       ├── controllers/                   # Controladores da API
+│       │   ├── compartmentController.js
+│       │   ├── dashboardController.js
+│       │   ├── deliveryController.js
+│       │   ├── deliveriesManageController.js
+│       │   ├── lockersManageController.js
+│       │   ├── pickupController.js
+│       │   └── reportController.js
+│       ├── services/                      # Lógica de negócio
+│       │   ├── deliveryService.js
+│       │   ├── emailService.js
+│       │   ├── reportService.js
+│       │   └── analyticsService.js
+│       ├── routes/                        # Rotas da API
+│       ├── db/
+│       │   └── prisma.js                  # Conexão com banco
+│       └── utils/
+│           └── gerarCodigo.js             # Gerador de códigos de 6 dígitos
+│
 └── frontend/
     ├── app/
-    │   ├── dashboard/
-    │   │   └── DashboardClient.js   # Dashboard principal
-    │   ├── pedidos/
-    │   │   └── PedidosClient.js     # Gestão de pedidos
-    │   ├── deliveriesManage/
-    │   │   └── DeliveriesManageClient.js
-    │   └── components/
-    │       └── AnalyticsDashboard.js
-    ├── components/                  # Componentes reutilizáveis
-    └── pages/                       # Páginas Next.js
+    │   ├── layout.js                      # Layout raiz com header sticky
+    │   ├── globals.css                    # Fonte Inter + Tailwind base
+    │   ├── dashboard/DashboardClient.js   # Grid de compartimentos em tempo real
+    │   ├── entregas/                      # Formulário de nova entrega
+    │   ├── pedidos/PedidosClient.js       # Gestão de pedidos ativos e histórico
+    │   ├── lockers/                       # Cadastro de lockers
+    │   ├── compartments/                  # Visualização de caixas reservadas
+    │   ├── tablet/KioskClient.js          # Interface quiosque (tablet)
+    │   ├── analise/                       # Analytics e relatórios
+    │   └── deliveriesManage/              # Gestão avançada de encomendas
+    ├── components/
+    │   ├── api.js                         # Cliente HTTP centralizado
+    │   ├── NavLinks.js                    # Navegação com link ativo destacado
+    │   ├── ConfirmModal.js                # Modal de confirmação (React Portal)
+    │   ├── DetailsModalUltimate.js        # Modal de detalhes do pedido (React Portal)
+    │   ├── CreateDeliveryModal.js         # Modal para criar encomenda
+    │   ├── AddLockerModal.js              # Modal para adicionar/editar locker
+    │   ├── ConfirmModal.js                # Modal genérico de confirmação
+    │   └── AnalyticsDashboard.js          # Dashboard de análises
+    └── lib/
+        └── utils.js                       # Funções compartilhadas (status, formatação)
 ```
 
-## 🛣️ API Routes
+## 🚀 Como ligar o sistema
 
-### Autenticação
-- `POST /api/auth/login` - Login de usuário
-- `POST /api/auth/logout` - Logout de usuário
+### Pré-requisito: arquivo `backend/.env`
+```env
+DATABASE_URL="sqlserver://HOST;database=NOME_DB;user=USUARIO;password=SENHA;trustServerCertificate=true"
+SMTP_HOST=smtp.gmail.com
+SMTP_PORT=587
+SMTP_USER=seu@email.com
+SMTP_PASS=sua_senha_de_app
+EMAIL_FROM=seu@email.com
+```
+
+### Terminal 1 — Backend
+```bash
+cd backend
+npm install        # apenas na primeira vez
+npm run dev        # desenvolvimento (nodemon)
+# ou
+npm start          # produção
+```
+
+### Terminal 2 — Frontend
+```bash
+cd frontend
+npm install        # apenas na primeira vez
+npm run dev        # http://localhost:3000
+```
+
+### Primeira vez (banco de dados)
+```bash
+cd backend
+npx prisma generate
+npx prisma migrate dev
+```
+
+## 🛣️ Rotas da API
 
 ### Lockers
-- `GET /api/lockers` - Listar todos os lockers
-- `POST /api/lockers` - Criar novo locker
-- `PUT /api/lockers/:id` - Atualizar locker
-- `DELETE /api/lockers/:id` - Deletar locker
+| Método | Rota | Descrição |
+|--------|------|-----------|
+| GET | `/api/lockers-manage` | Listar lockers |
+| POST | `/api/lockers-manage` | Criar locker |
+| PUT | `/api/lockers-manage/:id` | Atualizar locker |
+| DELETE | `/api/lockers-manage/:id` | Deletar locker |
 
-### Compartimentos (Caixas)
-- `GET /api/compartment` - Listar compartimentos
-- `POST /api/compartment/toggle-status` - Bloquear/Desbloquear compartimento
-- `GET /api/compartment/:lockerId` - Listar por locker
+### Compartimentos
+| Método | Rota | Descrição |
+|--------|------|-----------|
+| GET | `/api/dashboard/grid?lockerId={id}` | Grid de compartimentos |
+| POST | `/api/compartment/toggle-status` | Bloquear / desbloquear |
 
 ### Entregas
-- `GET /api/deliveries` - Listar entregas
-- `POST /api/deliveries/generate-code` - Gerar código de depósito
-- `POST /api/deliveries/deposit` - Depositar encomenda
-- `POST /api/deliveries/corrigir-status` - Corrigir status inconsistentes
-- `DELETE /api/deliveries/:id` - Deletar entrega
+| Método | Rota | Descrição |
+|--------|------|-----------|
+| POST | `/api/deliveries/generate-code` | Gerar código de depósito |
+| POST | `/api/deliveries/deposit` | Depositar encomenda |
+| GET | `/api/deliveries-manage` | Listar entregas (filtro por lockerId) |
+| DELETE | `/api/deliveries-manage/:id` | Deletar entrega |
+| POST | `/api/deliveries/corrigir-status` | Corrigir status inconsistentes |
 
-### Lista de Entregas
-- `GET /api/deliveries-list` - **DEPRECATED** - Use `/api/deliveries-manage`
+### Retirada
+| Método | Rota | Descrição |
+|--------|------|-----------|
+| POST | `/api/pickup` | Retirar encomenda (tablet) |
+| POST | `/api/pickup/verify` | Verificar código de retirada |
 
-### Gestão de Entregas
-- `GET /api/deliveries-manage` - Listar entregas para gestão (com filtro por lockerId)
-- `DELETE /api/deliveries-manage/:id` - Deletar entrega
-
-### Retirada (Pickup)
-- `POST /api/pickup` - Retirar encomenda (tablet)
-- `POST /api/pickup/verify` - Verificar código de retirada
-- `POST /api/pickup/complete` - Completar retirada
-
-### Dashboard
-- `GET /api/dashboard/grid?lockerId={id}` - Grid de compartimentos por locker
-- `GET /api/dashboard/stats` - Estatísticas gerais do sistema
-
-### Relatórios
-- `GET /api/report/deliveries` - Relatório de entregas
-- `GET /api/report/analytics` - Analytics do sistema
-
-### Gestão de Lockers
-- `GET /api/lockers-manage` - Listar lockers para gestão
-- `POST /api/lockers-manage` - Criar locker
-- `PUT /api/lockers-manage/:id` - Atualizar locker
-- `DELETE /api/lockers-manage/:id` - Deletar locker
+### Analytics / Relatórios
+| Método | Rota | Descrição |
+|--------|------|-----------|
+| GET | `/api/analytics` | Dados de análise (filtro por locker e datas) |
+| GET | `/api/report/deliveries` | Relatório em CSV |
+| GET | `/api/dashboard/stats` | Estatísticas gerais |
 
 ## 📊 Status do Sistema
 
 ### Status das Entregas
-- `PENDENTE_DEPOSITO` - Aguardando depósito
-- `PRONTO_PARA_RETIRADA` - Pronta para retirada
-- `RETIRADO` - Item retirado
+| Status | Descrição |
+|--------|-----------|
+| `PENDENTE_DEPOSITO` | Aguardando depósito do entregador |
+| `PRONTO_PARA_RETIRADA` | Depositado, aguardando retirada |
+| `RETIRADO` | Encomenda retirada pelo destinatário |
 
 ### Status dos Compartimentos
-- `DISPONIVEL` - Disponível para uso
-- `BLOQUEADO` - Bloqueado manualmente
-- `OCUPADO` - Ocupado com encomenda pronta
-- `RESERVADO` - Reservado para depósito
-
-## 📧 Sistema de E-mail
-
-### Configuração SMTP (Gmail)
-```env
-SMTP_HOST=smtp.gmail.com
-SMTP_PORT=587
-SMTP_USER=seu-email@gmail.com
-SMTP_PASS=sua-senha-app
-EMAIL_FROM=seu-email@gmail.com
-```
-
-### Tipos de E-mail
-1. **Código de Retirada** - Enviado após depósito da encomenda (para destinatário)
-2. **Confirmação de Retirada** - Enviado após retirada do item (para destinatário e remetente)
-
-### Templates
-- Localização: `backend/templates/emailTemplate.js`
-- Suporte para HTML e texto puro
-- Variáveis dinâmicas personalizadas
-
-## 🔧 Configuração do Ambiente
-
-### Backend
-```bash
-# Instalar dependências
-npm install
-
-# Gerar cliente Prisma
-npx prisma generate
-
-# Rodar servidor em desenvolvimento
-npm run dev
-
-# Rodar em produção
-npm start
-```
-
-### Frontend
-```bash
-# Instalar dependências
-npm install
-
-# Rodar em desenvolvimento
-npm run dev
-
-# Build para produção
-npm run build
-```
-
-### Banco de Dados
-```bash
-# Criar migração
-npx prisma migrate dev --name nome-migracao
-
-# Visualizar banco
-npx prisma studio
-```
+| Status | Descrição |
+|--------|-----------|
+| `DISPONIVEL` | Livre para uso |
+| `RESERVADO` | Reservado (código gerado, depósito pendente) |
+| `OCUPADO` | Encomenda depositada aguardando retirada |
+| `BLOQUEADO` | Bloqueado manualmente pelo administrador |
 
 ## 🔄 Fluxo do Sistema
 
 ### 1. Criação de Entrega
-1. Usuário solicita código de depósito
-2. Sistema gera códigos únicos
-3. Envia e-mail com código de retirada
-4. Entrega fica com status `PENDENTE_DEPOSITO`
+1. Admin gera código de depósito informando dados do destinatário
+2. Sistema reserva um compartimento aleatório disponível
+3. Entrega fica com status `PENDENTE_DEPOSITO`
 
 ### 2. Depósito
-1. Entregador usa código de depósito
-2. Sistema valida e atualiza status
-3. Compartimento fica `OCUPADO`
-4. Entrega fica `PRONTO_PARA_RETIRADA`
+1. Entregador insere código de depósito no tablet
+2. Sistema valida o código e atualiza o status
+3. E-mail com **código de retirada** é enviado ao destinatário
+4. Compartimento fica `OCUPADO`, entrega fica `PRONTO_PARA_RETIRADA`
 
 ### 3. Retirada
-1. Usuário insere código de retirada no tablet
-2. Sistema valida e processa retirada
-3. Compartimento volta para `DISPONIVEL`
-4. Entrega fica `RETIRADO`
-5. Envia e-mail de confirmação para **destinatário e remetente**
+1. Destinatário insere código de retirada no tablet
+2. Sistema valida e processa a retirada
+3. Compartimento volta para `DISPONIVEL`, entrega fica `RETIRADO`
+4. E-mail de confirmação enviado ao destinatário (e ao remetente, se informado)
 
-## 🛡️ Validações e Regras
+## 📧 Configuração de E-mail
 
-### Regras de Negócio
-- Compartimentos `BLOQUEADOS` só podem ser desbloqueados manualmente
-- Entregas `RETIRADO` não impedem uso do compartimento
-- Sistema ignora entregas `RETIRADO` para disponibilidade
-- Apenas entregas ativas bloqueiam operações
+O sistema usa Nodemailer com SMTP. Se o SMTP não estiver configurado, o sistema registra no log mas **não bloqueia** o fluxo de depósito.
 
-### Validações Técnicas
-- Códigos únicos de 6 dígitos
-- Validação de formato de e-mail
-- Verificação de disponibilidade de compartimentos
-- Tratamento de erros com logs detalhados
+> **Importante:** A retirada só é liberada após o e-mail ser enviado com sucesso (`dataNotificacao` preenchida). Se o SMTP falhar, o administrador pode reenviar manualmente ou liberar via endpoint de correção de status.
 
-## 📱 Funcionalidades Principais
+### Tipos de E-mail
+1. **Código de Retirada** — enviado ao destinatário após depósito
+2. **Confirmação de Retirada** — enviado ao destinatário e ao remetente após retirada
 
-### Dashboard
-- Visualização em tempo real dos compartimentos
-- Filtragem por locker (performance otimizada)
-- Status baseado em entregas ativas
-- Operações de bloqueio/desbloqueio
-- Estatísticas e analytics
+## 🔒 Segurança
 
-### Gestão de Entregas
-- Listagem completa com filtros por locker
-- Busca por código, status, data
-- Operações de exclusão (regras aplicadas)
-- Histórico completo
-- Separação correta por locker
+- Queries SQL parametrizadas via `prisma.$queryRaw` (sem interpolação de strings)
+- Validação de entrada com Zod nos endpoints críticos
+- Códigos de 6 dígitos gerados com `Math.random` (não criptográfico — adequado para esse caso de uso)
+- Sem exposição de dados sensíveis nas respostas da API
 
-### Sistema de Retirada
-- Interface tablet-friendly
-- Validação em tempo real
-- Feedback visual imediato
-- Logs de operações
+## 🛡️ Regras de Negócio
 
-## 🔮 Próximos Melhorias
-
-### Em Desenvolvimento
-- [ ] Sistema de autenticação JWT
-- [ ] Interface mobile app
-- [ ] Notificações push
-- [ ] Integração com APIs externas
-
-### Futuras
-- [ ] Multi-locker support
-- [ ] Relatórios avançados
-- [ ] Sistema de assinaturas
-- [ ] Analytics em tempo real
+- Compartimentos `OCUPADO` ou `RESERVADO` não podem ser bloqueados manualmente
+- A retirada só é permitida se o e-mail de notificação foi enviado com sucesso
+- Apenas entregas `PENDENTE_DEPOSITO` podem ser deletadas
+- Entregas `RETIRADO` são mantidas como histórico (não deletáveis)
+- `emailRemetente` é opcional — e-mail de confirmação ao remetente é enviado apenas se informado
+- Seleção de compartimento é aleatória entre os disponíveis
 
 ## 🐛 Troubleshooting
 
-### Problemas Comuns
-1. **E-mail não enviado** - Verificar configuração SMTP
-2. **Compartimento bloqueado** - Verificar entregas ativas
-3. **Status inconsistente** - Usar endpoint de correção
-4. **Cache do frontend** - Limpar cache do navegador
+| Problema | Solução |
+|----------|---------|
+| E-mail não enviado | Verificar variáveis SMTP no `.env` |
+| Retirada bloqueada ("e-mail não enviado") | Verificar logs do SMTP; reenviar ou usar endpoint de correção |
+| Status inconsistente no dashboard | Acessar `POST /api/deliveries/corrigir-status` |
+| Frontend não conecta ao backend | Confirmar `NEXT_PUBLIC_API_URL` no `frontend/.env.local` |
+| Porta 3000 ocupada | Rodar com `npm run dev -- -p 3001` |
 
-### Logs e Debug
-- Logs detalhados em todas as operações
-- Status de e-mail claramente indicado
-- Erros com stack trace completo
-- Monitoramento em tempo real
+## 📱 Páginas do Frontend
 
-## 📞 Suporte
-
-Para suporte técnico ou dúvidas:
-- Verificar logs do sistema
-- Consultar documentação da API
-- Validar configuração de ambiente
+| Rota | Descrição |
+|------|-----------|
+| `/dashboard` | Visualização em tempo real dos compartimentos por locker |
+| `/entregas` | Formulário para gerar nova entrega |
+| `/pedidos` | Lista de pedidos ativos e histórico |
+| `/analise` | Analytics com filtros por locker e período |
+| `/tablet` | Interface quiosque para depósito e retirada |
+| `/lockers` | Cadastro e gestão de lockers |
+| `/compartments` | Visualização detalhada de caixas reservadas |
+| `/deliveriesManage` | Gestão avançada de encomendas com busca |
 
 ---
 
-**Versão:** 1.1.0  
-**Última atualização:** Abril 2026  
+## 📝 Changelog
+
+### v1.2.0 — Junho 2026
+
+#### 🔴 Correções críticas (backend)
+- **SQL Injection corrigido:** `analyticsService.js` substituiu `$queryRawUnsafe` com interpolação de string por `$queryRaw` com template literals parametrizados
+- **Case sensitivity do Prisma corrigido:** accessors de modelo dentro de transações padronizados para camelCase (`tx.retiradaLog`, `tx.entrega`, `tx.compartimento`) em `deliveriesManageController.js` e `deliveryService.js`
+- **`gerarCodigo` corrigido:** função agora aceita e respeita o parâmetro `length` (antes ignorado)
+- **`dataNotificacao` corrigido:** campo só é marcado se o e-mail foi enviado com sucesso (antes marcava mesmo em falha)
+- **Null pointer em `emailRemetente` corrigido:** e-mail de confirmação ao remetente só é enviado se o campo estiver preenchido
+- **Race condition corrigida:** `corrigirStatusInconsistentes` envolve updates em `prisma.$transaction()`
+
+#### 🟡 Melhorias de código (frontend)
+- **`lib/utils.js` criado:** funções `getStatusColor`, `getStatusText`, `getStatusIcon`, `getSizeText`, `formatDate` centralizadas — elimina duplicação em 4+ arquivos
+- **Modais reescritos como React puro:** `ConfirmModal` e `DetailsModalUltimate` agora usam `ReactDOM.createPortal` em vez de manipulação direta de DOM (`document.createElement`)
+- **Console.logs de debug removidos:** `DashboardClient.js` limpado
+- **Funções duplicadas removidas:** `PedidosClient.js` tinha `handleDeleteClick` e `confirmDelete` declarados duas vezes
+- **`API_BASE` usa variável de ambiente:** `NEXT_PUBLIC_API_URL` em vez de URL hardcoded
+
+#### ✨ Melhorias visuais (frontend)
+- **Fonte Inter** carregada via Google Fonts com `antialiased`
+- **Header sticky** com efeito de blur/transparência (`backdrop-blur`)
+- **NavLinks com link ativo destacado:** rota atual recebe fundo preto via `usePathname`
+- **Dashboard:** skeleton loader animado durante carregamento, contadores de status por tipo, cards de caixas com animação de scale no hover
+- **Modais:** design mais limpo com `rounded-2xl`, overlay com `backdrop-blur`, botão fechar com SVG
+
+### v1.1.0 — Abril 2026
+- Filtro de lockers na aba de pedidos
+- Formato de data corrigido no export CSV
+
+### v1.0.0 — Março 2026
+- Versão inicial do sistema
+
+---
+
+**Versão:** 1.2.0
+**Última atualização:** Junho 2026
 **Desenvolvido por:** Murilo Carias
