@@ -78,12 +78,23 @@ SistemaLocker/
 
 ### Pré-requisito: arquivo `backend/.env`
 ```env
+PORT=4000
 DATABASE_URL="sqlserver://HOST;database=NOME_DB;user=USUARIO;password=SENHA;trustServerCertificate=true"
+
+# E-mail (SMTP)
 SMTP_HOST=smtp.gmail.com
 SMTP_PORT=587
 SMTP_USER=seu@email.com
 SMTP_PASS=sua_senha_de_app
 EMAIL_FROM=seu@email.com
+
+# WhatsApp via Suri (ChatbotMaker) — opcional, mas recomendado
+SURI_URL=https://cbm-wap-babysuri-cb89467489-dispe.azurewebsites.net
+SURI_TOKEN=seu_token_suri_aqui
+SURI_CHANNEL_ID=wp1015760648278458
+
+NODE_ENV=development
+JWT_SECRET=sua_chave_secreta
 ```
 
 ### Terminal 1 — Backend
@@ -183,6 +194,35 @@ npx prisma migrate dev
 3. Compartimento volta para `DISPONIVEL`, entrega fica `RETIRADO`
 4. E-mail de confirmação enviado ao destinatário (e ao remetente, se informado)
 
+## 📱 Integração WhatsApp (Suri / ChatbotMaker)
+
+O sistema envia notificações via WhatsApp **em paralelo ao e-mail**, usando a plataforma Suri da Dispetral.
+
+### Fluxo de notificações
+
+| Evento | E-mail | WhatsApp |
+|--------|--------|----------|
+| Após depósito | ✅ Código de retirada para destinatário | ✅ Mesma mensagem (se telefone informado) |
+| Após retirada | ✅ Confirmação para destinatário | ✅ Confirmação (se telefone informado) |
+| Após retirada | ✅ Aviso para remetente (se informado) | — |
+
+### Comportamento
+- Se o WhatsApp falhar, o sistema **não é interrompido** — e-mail ainda é enviado
+- `dataNotificacao` é marcado se **qualquer canal** (e-mail ou WhatsApp) for bem-sucedido
+- Telefone é normalizado automaticamente (adiciona `55` se não tiver código do país)
+- Se `SURI_TOKEN` não estiver configurado, o envio é simplesmente ignorado
+
+### Mensagens enviadas
+
+**Código de retirada (após depósito):**
+> Olá, *[Nome]*! Seu pedido está disponível para retirada na Dispetral...
+> 1️⃣ Abra o portão com a senha: *[descrição]*
+> 2️⃣ No tablet, digite o pin: *[código]*
+
+**Confirmação de retirada:**
+> Seu pedido foi retirado com sucesso. ✅
+> A Dispetral agradece pela preferência!
+
 ## 📧 Configuração de E-mail
 
 O sistema usa Nodemailer com SMTP. Se o SMTP não estiver configurado, o sistema registra no log mas **não bloqueia** o fluxo de depósito.
@@ -260,6 +300,19 @@ O sistema usa Nodemailer com SMTP. Se o SMTP não estiver configurado, o sistema
 - **Dashboard:** skeleton loader animado durante carregamento, contadores de status por tipo, cards de caixas com animação de scale no hover
 - **Modais:** design mais limpo com `rounded-2xl`, overlay com `backdrop-blur`, botão fechar com SVG
 
+### v1.3.0 — Junho 2026
+
+#### 📱 Integração WhatsApp via Suri (ChatbotMaker)
+- Criado `whatsappService.js` com integração à API Suri da Dispetral
+- Notificações enviadas em paralelo ao e-mail nos dois eventos:
+  - Após depósito: código de retirada + instruções (mesma mensagem do e-mail)
+  - Após retirada: confirmação de recebimento
+- Telefone normalizado automaticamente (adiciona DDI 55 se necessário)
+- Falha do WhatsApp não interrompe o fluxo — sistema continua normalmente
+- `dataNotificacao` marcado se qualquer canal (e-mail ou WhatsApp) for bem-sucedido
+- Configuração via variáveis de ambiente: `SURI_URL`, `SURI_TOKEN`, `SURI_CHANNEL_ID`
+- README atualizado com seção completa de integração WhatsApp
+
 ### v1.1.0 — Abril 2026
 - Filtro de lockers na aba de pedidos
 - Formato de data corrigido no export CSV
@@ -269,6 +322,6 @@ O sistema usa Nodemailer com SMTP. Se o SMTP não estiver configurado, o sistema
 
 ---
 
-**Versão:** 1.2.0
+**Versão:** 1.3.0
 **Última atualização:** Junho 2026
 **Desenvolvido por:** Murilo Carias

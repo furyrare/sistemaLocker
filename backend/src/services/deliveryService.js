@@ -1,6 +1,7 @@
 const { prisma } = require('../db/prisma');
 const { gerarCodigo } = require('../utils/gerarCodigo');
 const { sendPickupCodeEmail } = require('./emailService');
+const { sendPickupCodeWhatsapp, sendPickupConfirmationWhatsapp } = require('./whatsappService');
 const crypto = require('crypto');
 
 async function generateDepositCode({ emailDestinatario, nomeDestinatario, telefoneDestinatario, emailRemetente, lockerId, descricao, numeroPedido, size }) {
@@ -128,7 +129,10 @@ async function depositByCode({ code, ipAddress }) {
     return updatedDelivery;
   });
 
-  // Enviar e-mail com código de retirada após depósito e marcar notificado apenas se enviado
+  // Enviar notificações após depósito (e-mail + WhatsApp)
+  // dataNotificacao só é marcado se ao menos um canal for bem-sucedido
+  let notificado = false;
+
   try {
     await sendPickupCodeEmail({
       to: delivery.emailDestinatario,
@@ -142,15 +146,33 @@ async function depositByCode({ code, ipAddress }) {
       description: delivery.descricao,
       senderEmail: delivery.emailRemetente
     });
-    console.log('E-mail enviado com sucesso para:', delivery.emailDestinatario);
+    console.log('✅ E-mail enviado para:', delivery.emailDestinatario);
+    notificado = true;
+  } catch (emailError) {
+    console.error('❌ Erro ao enviar e-mail de depósito:', emailError.message);
+  }
+
+  if (delivery.telefoneDestinatario) {
+    try {
+      await sendPickupCodeWhatsapp({
+        phone: delivery.telefoneDestinatario,
+        recipientName: delivery.nomeDestinatario,
+        pickupCode: delivery.codigoRetirada,
+        lockerLocation: delivery.Armario.localizacao,
+        compartmentNumber: delivery.Compartimento.numero,
+        description: delivery.descricao,
+      });
+      notificado = true;
+    } catch (waError) {
+      console.error('❌ Erro ao enviar WhatsApp de depósito:', waError.message);
+    }
+  }
+
+  if (notificado) {
     await prisma.entrega.update({
       where: { id: delivery.id },
       data: { dataNotificacao: new Date() }
     });
-  } catch (emailError) {
-    console.error('❌ Erro ao enviar e-mail de depósito:', emailError);
-    console.error('❌ Stack trace:', emailError.stack);
-    // dataNotificacao não é definido — retirada ficará bloqueada até reenvio manual
   }
 
   return { 
@@ -215,39 +237,47 @@ async function pickupByCode({ code, ipAddress }) {
     return updatedDelivery;
   });
 
-  // Enviar e-mails de confirmação de retirada para ambos destinatário e remetente
+  // Confirmações de retirada: e-mail + WhatsApp para destinatário (e e-mail para remetente)
+  const { sendPickupConfirmationEmail } = require('./emailService');
+  const confirmPayload = {
+    lockerLocation: delivery.Armario.localizacao,
+    compartmentNumber: delivery.Compartimento.numero,
+    description: delivery.descricao,
+    pickupTime: new Date().toLocaleString('pt-BR'),
+    senderEmail: delivery.emailRemetente,
+  };
+
+  // E-mail para destinatário
   try {
-    const { sendPickupConfirmationEmail } = require('./emailService');
-    
-    // Enviar para o destinatário (quem retirou)
-    await sendPickupConfirmationEmail({
-      to: delivery.emailDestinatario,
-      recipientName: delivery.nomeDestinatario,
-      lockerLocation: delivery.Armario.localizacao,
-      compartmentNumber: delivery.Compartimento.numero,
-      description: delivery.descricao,
-      pickupTime: new Date().toLocaleString('pt-BR'),
-      senderEmail: delivery.emailRemetente
-    });
-    console.log('📧 E-mail de confirmação enviado para o destinatário:', delivery.emailDestinatario);
-    
-    // Enviar para o remetente (quem enviou o pacote) — apenas se e-mail informado
-    if (delivery.emailRemetente) {
-      await sendPickupConfirmationEmail({
-        to: delivery.emailRemetente,
+    await sendPickupConfirmationEmail({ to: delivery.emailDestinatario, recipientName: delivery.nomeDestinatario, ...confirmPayload });
+    console.log('📧 Confirmação enviada por e-mail para:', delivery.emailDestinatario);
+  } catch (e) {
+    console.error('❌ Erro e-mail confirmação (destinatário):', e.message);
+  }
+
+  // WhatsApp para destinatário
+  if (delivery.telefoneDestinatario) {
+    try {
+      await sendPickupConfirmationWhatsapp({
+        phone: delivery.telefoneDestinatario,
         recipientName: delivery.nomeDestinatario,
         lockerLocation: delivery.Armario.localizacao,
         compartmentNumber: delivery.Compartimento.numero,
-        description: delivery.descricao,
-        pickupTime: new Date().toLocaleString('pt-BR'),
-        senderEmail: delivery.emailRemetente
       });
-      console.log('📧 E-mail de confirmação enviado para o remetente:', delivery.emailRemetente);
+      console.log('📱 Confirmação enviada por WhatsApp para:', delivery.telefoneDestinatario);
+    } catch (e) {
+      console.error('❌ Erro WhatsApp confirmação:', e.message);
     }
-    
-  } catch (emailError) {
-    console.error('❌ Erro ao enviar e-mail de confirmação de retirada:', emailError);
-    // Não interromper o processo se o e-mail falhar
+  }
+
+  // E-mail para remetente (se informado)
+  if (delivery.emailRemetente) {
+    try {
+      await sendPickupConfirmationEmail({ to: delivery.emailRemetente, recipientName: delivery.nomeDestinatario, ...confirmPayload });
+      console.log('📧 Confirmação enviada por e-mail para remetente:', delivery.emailRemetente);
+    } catch (e) {
+      console.error('❌ Erro e-mail confirmação (remetente):', e.message);
+    }
   }
 
   return result;
